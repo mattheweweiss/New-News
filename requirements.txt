@@ -1,2 +1,7 @@
+protobuf
+sentencepiece
 spacy
 textblob
+tiktoken
+torch
+transformers
