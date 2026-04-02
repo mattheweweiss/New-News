@@ -32,35 +32,80 @@ file_text = file_full[file_text_start_index:file_text_end_index]
 
 
 # Pre-set list of aspects to parse for
-aspects_list = ["Black Lives Matter", "black lives matter", "BLM", "blm"]
+aspects_list = ["Black Lives Matter", "BLM", "ABCDEFG"]
 
 
 
-# Finds aspect in file text
-# If not found, returns false, otherwise true
-def find_aspect(aspect):
-    if file_text.find(aspect) == -1:
-        return False
+# Dictionary mapping labels to scores for overall sentiment calculation
+label_score_dict = {
+    "Negative": -1,
+    "Neutral": 0,
+    "Positive": 1
+}
+
+
+
+# Calculates overall sentiment from list of sentiments
+# Finds the direction of the sentiments as well as calculated confidence
+# Returns couple of label and score
+def calculate_overall_sentiment(sentiments):
+    if not sentiments:
+        return None, None
+
+    weighted_score = 0.0
+    total_score = 0.0
+
+    for sentiment in sentiments:
+        weighted_score += label_score_dict[sentiment["label"]] * sentiment["score"]
+        total_score += sentiment["score"]
+
+    direction = weighted_score / total_score
+    score = total_score / len(sentiments)
+
+    if direction > 0.2:
+        return "Positive", score
+    elif direction < -0.2:
+        return "Negative", score
     else:
-        return True
+        return "Neutral", score
 
 
 
-# Creates list of aspects used in text
-used_aspects = [x for x in filter(find_aspect, aspects_list)]
 
-
-
-# Analyze each aspect against the text 
+# Analyze each aspect against the text
+# Returns sentiments of structure:
+# {
+#   "found": True/False,
+#   "sentence": str,
+#   "sentiment": str
+# }
 def analyze_aspects(text, aspects):
-    sentiments = {}
+    result = {}
+    doc = sp(text)
 
     for aspect in aspects:
-        sentiment = classifier(text, text_pair=aspect)
-        sentiments[aspect] = sentiment
+        sentiments = []
+        aspect_lower = aspect.lower()
 
-    return sentiments
+        # Search each sentence for the aspect
+        for sentence in doc.sents:
+            sentence_text = sentence.text
+            if aspect_lower in sentence_text.lower():
+                found = True
+                sentiment = classifier(sentence_text, text_pair=aspect)
+                sentiments.append(sentiment[0])
+
+        label, score = determine_overall_sentiment(sentiments)
+        result[aspect] = {
+            "found": len(sentiments) > 0,
+            "label": label,
+            "score": score,
+            "sentiments": sentiments
+        }
 
 
-sentiments = analyze_aspects(file_text, used_aspects)
+    return result
+
+
+sentiments = analyze_aspects(file_text, aspects_list)
 print(sentiments)
