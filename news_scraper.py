@@ -1,5 +1,4 @@
 from bs4 import BeautifulSoup
-import feedparser
 import html
 import json
 import requests
